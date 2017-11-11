@@ -7,12 +7,11 @@
 #include <map>
 using namespace std;
 
-int MAX_COLUMNS_CLIENT = 14;
-int MAX_COLUMNS_TRANSACTION = 7;
+//Define your structs here
 
 struct transactionData {
 	string source;
-	string dest;
+	string target;
 	string date;
 	string time;
 	string amount;
@@ -20,69 +19,176 @@ struct transactionData {
 };
 
 struct clientData {
-	string firstName;
-	vector< pair< pair<string,string>, string> > transactions;
+	string first_name;
+	string last_name;
+	string age;
+	string email;
+	string ocupation;
+	string political_views;
+	string nationality;
+	string university;
+	string academic_degree;
+	string address;
+	string postal_code;
+	string country;
+	string city;
+	vector<string> transactions;
 };
 
+struct atmData {
+	string latitude;
+	string longitude;
+	vector<string> transactions;
+};
 
+struct companyData {
+	string type;
+	string name;
+	string country;
+	vector<string> transactions;
+};
 
-int main() {
-	map<string,clientData> Clients;
-	map<string,transactionData> Transactions;
-	ifstream clientFile("clients.small.csv");
-	ifstream transactionsFile("transactions.small.csv");
+//Define yoyr global data here
+
+int MAX_COLUMNS_CLIENT = 14;
+int MAX_COLUMNS_TRANSACTION = 7;
+
+map<string, clientData> Clients;
+map<string, transactionData> Transactions;
+map<string, companyData> Companies;
+map<string, atmData> Atms;
+
+void parseClientData(string csv) {
+	ifstream clientFile(csv);
 	bool first = true;
 	while (clientFile.good()) {
 		clientData tuple;
 		string idClient;
 		getline(clientFile,idClient,',');
-		getline ( clientFile, tuple.firstName, ',' );
-		string uselessValue;
-		for(int i = 0; i < MAX_COLUMNS_CLIENT-3; ++i) {
-			getline(clientFile, uselessValue, ',');
-		}
-		getline(clientFile, uselessValue, '\n');
+		getline (clientFile, tuple.first_name, ',' );
+		getline(clientFile, tuple.last_name, ',');
+		getline(clientFile, tuple.age, ',');
+		getline(clientFile, tuple.email, ',');
+		getline(clientFile, tuple.ocupation, ',');
+		getline(clientFile, tuple.political_views, ',');
+		getline(clientFile, tuple.nationality, ',');
+		getline(clientFile, tuple.university, ',');
+		getline(clientFile, tuple.academic_degree, ',');
+		getline(clientFile, tuple.address, ',');
+		getline(clientFile, tuple.country, ',');
+		getline(clientFile, tuple.city, '\n');
 	    if (first) first = false;
-	    else Clients.insert(pair<string,clientData>(idClient,tuple));
-			
-	} 
-	first = true;
+	    else if (idClient != "") Clients.insert(pair<string,clientData>(idClient,tuple));
+	}
+}
+
+void parseCompanyData(string csv) {
+	ifstream companyFile(csv);
+	bool first = true;
+	while (companyFile.good()) {
+		companyData tuple;
+		string idCompany;
+		getline(companyFile,idCompany,',');
+		getline (companyFile, tuple.type, ',' );
+		getline(companyFile, tuple.name, ',');
+		getline(companyFile, tuple.country, '\n');
+	    if (first) first = false;
+	    else if (idCompany != "") Companies.insert(pair<string,companyData>(idCompany,tuple));
+	}
+}
+
+void parseAtmData(string csv) {
+	ifstream atmFile(csv);
+	bool first = true;
+	while (atmFile.good()) {
+		atmData tuple;
+		string idAtm;
+		getline(atmFile, idAtm, ',');
+		getline(atmFile, tuple.latitude, ',');
+		getline(atmFile, tuple.longitude, '\n');
+	    if (first) first = false;
+	    else if (idAtm != "") Atms.insert(pair<string,atmData>(idAtm,tuple));
+	}
+}
+
+void parseTransactionData(string csv) {
+	ifstream transactionsFile(csv);
+	bool first = true;
 	while(transactionsFile.good()) {
 		transactionData tuple;
 		string idTransaction;
 		getline(transactionsFile,idTransaction, ',');
 		getline(transactionsFile, tuple.source, ',');
-		getline(transactionsFile, tuple.dest, ',');	
+		getline(transactionsFile, tuple.target, ',');	
 		getline(transactionsFile, tuple.date, ',');	
-		string uselessValue;
-		for(int i = 0; i < MAX_COLUMNS_TRANSACTION-5; ++i) {
-			getline(transactionsFile, tuple.amount, ',');
-		}
-		
-	    getline(transactionsFile, uselessValue, '\n');
+		getline(transactionsFile, tuple.time, ',');
+		getline(transactionsFile, tuple.amount, ',');
+	    getline(transactionsFile, tuple.currency, '\n');
 	    if (first) first = false;
-	    else Transactions.insert(pair<string,transactionData>(idTransaction,tuple));
+	    else if (idTransaction != "") Transactions.insert(pair<string,transactionData>(idTransaction,tuple));
 	}
-	cout << Clients["856508a8-10ca-485c-b290-9cb79e0a6065"].firstName << endl;
-	cout << Clients["762f3be5-1637-4bc4-8cd4-3ebe895236db"].firstName << endl;
-	first = true;
+}
+
+int main() {
+	parseClientData("clients.small.csv");
+	parseAtmData("atms.small.csv");
+	parseCompanyData("companies.small.csv");
+	parseTransactionData("transactions.small.csv");
 	for (map<string,transactionData>::iterator it=Transactions.begin(); it!=Transactions.end(); ++it){
-		string source = it->second.source;
-		string dest = it->second.dest;
-		string amount = it->second.amount;
-		string date = it->second.date;
-		if (first) cout << ' ' << source << ' ' << dest << endl;
-		Clients[source].transactions.push_back(pair< pair<string,string>, string>(pair<string,string>(dest,amount),date));
-		first = false;
+		string transactionID = it->first;
+		transactionData transaction = it->second;
+		if (Atms.find(transaction.source) != Atms.end()) {
+			Atms[transaction.source].transactions.push_back(transactionID);
+		} else if (Companies.find(transaction.source) != Companies.end()) {
+			Companies[transaction.source].transactions.push_back(transactionID);
+		} else {
+			Clients[transaction.source].transactions.push_back(transactionID);
+		}
 	}
 	for (map<string,clientData>::iterator it=Clients.begin(); it!=Clients.end(); ++it) {
-		int sizeT = it->second.transactions.size();
-		cout << it->second.firstName << endl;
-		for (int i = 0; i < sizeT; ++i){
-			string idClient = it->second.transactions[i].first.first;
-			string amount = it->second.transactions[i].first.second;
-			string date = it->second.transactions[i].second;
-			if (amount != "" and stoi(amount) > 100) cout << '\t' << Clients[idClient].firstName << ' ' << amount << ' ' << date << endl;
+		clientData client = it->second;
+		//cout << client.first_name << ' ' << client.last_name << endl;
+		int sizeT = client.transactions.size();
+		for (int i = 0; i < sizeT; ++i) {
+			transactionData transaction = Transactions[client.transactions[i]];
+			if (Clients.find(transaction.target) != Clients.end()){
+				cout << '\t' << Clients[transaction.target].first_name << ' ' << Clients[transaction.target].last_name << ' ' << transaction.amount << endl;
+			} else if (Companies.find(transaction.target) != Companies.end()) {
+				cout << '\t' << Companies[transaction.target].name << ' ' << transaction.amount << endl;
+			} else {
+				cout << '\t' << Atms[transaction.target].latitude << ' ' << transaction.amount << endl;
+			}
+		}
+	}
+	for (map<string,atmData>::iterator it=Atms.begin(); it!=Atms.end(); ++it) {
+		atmData atm = it->second;
+		cout << atm.latitude << ' ' << endl;
+		int sizeT = atm.transactions.size();
+		for (int i = 0; i < sizeT; ++i) {
+			transactionData transaction = Transactions[atm.transactions[i]];
+			if (Clients.find(transaction.target) != Clients.end()){
+				cout << '\t' << Clients[transaction.target].first_name << ' ' << Clients[transaction.target].last_name << ' ' << transaction.amount << endl;
+			} else if (Companies.find(transaction.target) != Companies.end()) {
+				cout << '\t' << Companies[transaction.target].name << ' ' << transaction.amount << endl;
+			} else {
+				cout << '\t' << Atms[transaction.target].latitude << ' ' << transaction.amount << endl;
+			}
+		}
+	}
+
+	for (map<string,companyData>::iterator it=Companies.begin(); it!=Companies.end(); ++it) {
+		companyData company = it->second;
+		cout << company.name << ' ' << endl;
+		int sizeT = company.transactions.size();
+		for (int i = 0; i < sizeT; ++i) {
+			transactionData transaction = Transactions[company.transactions[i]];
+			if (Clients.find(transaction.target) != Clients.end()){
+				cout << '\t' << Clients[transaction.target].first_name << ' ' << Clients[transaction.target].last_name << ' ' << transaction.amount << endl;
+			} else if (Companies.find(transaction.target) != Companies.end()) {
+				cout << '\t' << Companies[transaction.target].name << ' ' << transaction.amount << endl;
+			} else {
+				cout << '\t' << Atms[transaction.target].latitude << ' ' << transaction.amount << endl;
+			}
 		}
 	}
 }
