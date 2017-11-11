@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <queue>
 using namespace std;
 
 //Define your structs here
@@ -33,12 +34,14 @@ struct clientData {
 	string country;
 	string city;
 	vector<string> transactions;
+	vector<string> receptions;
 };
 
 struct atmData {
 	string latitude;
 	string longitude;
 	vector<string> transactions;
+	vector<string> receptions;
 };
 
 struct companyData {
@@ -46,6 +49,7 @@ struct companyData {
 	string name;
 	string country;
 	vector<string> transactions;
+	vector<string> receptions;
 };
 
 //Define yoyr global data here
@@ -57,6 +61,7 @@ map<string, clientData> Clients;
 map<string, transactionData> Transactions;
 map<string, companyData> Companies;
 map<string, atmData> Atms;
+map<string,string> visited;
 
 void parseClientData(string csv) {
 	ifstream clientFile(csv);
@@ -129,6 +134,32 @@ void parseTransactionData(string csv) {
 	}
 }
 
+int checkCicle(string idStart,string idGoal) {
+	int num = 0;
+	map<string,bool> visit;
+	queue<string> q;
+	q.push(idStart);
+	visit.insert(pair<string,bool>(idStart,true));
+	while (not q.empty()) {
+		string id = q.front(); q.pop();
+		vector<string> receptions;
+		if (Companies.find(id) != Companies.end()) {
+				receptions = Companies[id].receptions;
+		} else {
+				receptions = Clients[id].receptions;
+		}
+		for (int i = 0; i < receptions.size(); ++i) {
+			transactionData reception = Transactions[receptions[i]];
+			if (visit.find(reception.source) == visit.end()) {
+				q.push(reception.source);
+				visit.insert(pair<string,bool>(reception.source,true));
+			} else if (reception.source == idGoal) return num;
+		}
+		++num;
+	}
+	return 0;
+}
+
 int main() {
 	parseClientData("clients.small.csv");
 	parseAtmData("atms.small.csv");
@@ -144,22 +175,91 @@ int main() {
 		} else {
 			Clients[transaction.source].transactions.push_back(transactionID);
 		}
+		if (Atms.find(transaction.target) != Atms.end()) {
+			Atms[transaction.target].receptions.push_back(transactionID);
+		} else if (Companies.find(transaction.target) != Companies.end()) {
+			Companies[transaction.target].receptions.push_back(transactionID);
+		} else {
+			Clients[transaction.target].receptions.push_back(transactionID);
+		}
 	}
-	for (map<string,clientData>::iterator it=Clients.begin(); it!=Clients.end(); ++it) {
-		clientData client = it->second;
-		//cout << client.first_name << ' ' << client.last_name << endl;
-		int sizeT = client.transactions.size();
-		for (int i = 0; i < sizeT; ++i) {
-			transactionData transaction = Transactions[client.transactions[i]];
-			if (Clients.find(transaction.target) != Clients.end()){
-				cout << '\t' << Clients[transaction.target].first_name << ' ' << Clients[transaction.target].last_name << ' ' << transaction.amount << endl;
-			} else if (Companies.find(transaction.target) != Companies.end()) {
-				cout << '\t' << Companies[transaction.target].name << ' ' << transaction.amount << endl;
-			} else {
-				cout << '\t' << Atms[transaction.target].latitude << ' ' << transaction.amount << endl;
+
+ 	//Search for DAG between clients and enterprises
+	queue<string> q;
+	int i = 0;
+	int countDag = 0;
+	int visto = 0;
+	for (map<string,clientData>::iterator it = Clients.begin(); it!=Clients.end(); ++it) {
+		if (visited.find(it->first) == visited.end()) {
+			++i;
+			q.push(it->first);
+			visited.insert(pair<string,string>(it->first,""));
+			while (not q.empty()) {
+				string id = q.front(); q.pop();
+				vector<string> transactions;
+				if (Companies.find(id) != Companies.end()) {
+					transactions = Companies[id].transactions;
+				}
+				else transactions = Clients[id].transactions;
+				for (int i = 0; i < transactions.size(); ++i) {
+					transactionData transaction = Transactions[transactions[i]];
+					if (visited.find(transaction.target) == visited.end()) {
+						q.push(transaction.target);
+						visited.insert(pair<string,string>(transaction.target,id));
+					} else { 
+						++visto;
+						if (checkCicle(id,transaction.target)> 0) {
+						cout << "rooooop" << endl;
+							++countDag;
+						}
+					}
+				}
 			}
 		}
 	}
+	cout << visto << endl;
+	for (map<string,companyData>::iterator it = Companies.begin(); it!=Companies.end(); ++it) {
+		if (visited.find(it->first) == visited.end()) {
+			++i;
+			q.push(it->first);
+			visited.insert(pair<string,string>(it->first,""));
+			while (not q.empty()) {
+				string id = q.front(); q.pop();
+				vector<string> transactions;
+				if (Companies.find(id) != Companies.end()) transactions = Companies[id].transactions;
+				else transactions = Clients[id].transactions;
+				for (int i = 0; i < transactions.size(); ++i) {
+					transactionData transaction = Transactions[transactions[i]];
+					int num;
+					if (visited.find(transaction.target) == visited.end()) {
+						q.push(transaction.target);
+						visited.insert(pair<string,string>(transaction.target,id));
+					} else if (checkCicle(id,transaction.target)) {
+						++countDag;
+					}
+				}
+			}
+		}
+	}
+	cout << i << ' ' << countDag << endl;
+	/*///* LOGS
+	for (map<string,clientData>::iterator it=Clients.begin(); it!=Clients.end(); ++it) {
+		clientData client = it->second;
+		cout << client.first_name << ' ' << client.last_name << endl;
+		int sizeT = client.transactions.size();
+		for (int i = 0; i < sizeT; ++i) {
+			transactionData transaction = Transactions[client.transactions[i]];
+			if (stoi(transaction.amount) > 100) {
+				if (Companies.find(transaction.target) != Companies.end()) {
+					cout << '\t' << Companies[transaction.target].name << ' ' << transaction.amount << endl;
+				} else if (Atms.find(transaction.target) != Atms.end()) {
+					cout << '\t' << Atms[transaction.target].latitude << ' ' << transaction.amount << endl;
+				} else {
+					cout << '\t' << Clients[transaction.target].first_name << ' ' << Clients[transaction.target].last_name << ' ' << transaction.amount << endl;
+				}
+			}
+		}
+	}/*
 	for (map<string,atmData>::iterator it=Atms.begin(); it!=Atms.end(); ++it) {
 		atmData atm = it->second;
 		cout << atm.latitude << ' ' << endl;
@@ -191,4 +291,34 @@ int main() {
 			}
 		}
 	}
+	//*/
+
 }
+
+/*
+int checkCicle2(string idStart,string idGoal) {
+	int num = 0;
+	map<string,bool> visit;
+	queue<string> q;
+	q.push(idStart);
+	visit.insert(pair<string,bool>(idStart,true));
+	while (not q.empty()) {
+		string id = q.front(); q.pop();
+		vector<string> receptions;
+		if (Companies.find(id) != Companies.end()) {
+				receptions = Companies[id].receptions;
+		} else {
+				receptions = Clients[id].receptions;
+		}
+		for (int i = 0; i < receptions.size(); ++i) {
+			transactionData reception = Transactions[receptions[i]];
+			if (visit.find(reception.source) == visit.end()) {
+				q.push(reception.source);
+				visit.insert(pair<string,bool>(reception.source,true));
+			} else if (reception.source == idGoal) return num;
+		}
+		++num;
+	}
+	return 0;
+}
+*/
