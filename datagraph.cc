@@ -241,8 +241,13 @@ void printReceptions(const vector<string> &receptions) {
 	clientData client = Clients[Transactions[receptions[0]].target];
 	cout << '\t' << client.first_name << ' ' << client.last_name << " received " << sumAmounts(receptions)<< " from:" << endl;
 	for (int i = 0; i < receptions.size(); ++i) {
-		clientData emissor = Clients[Transactions[receptions[i]].source];
-		cout << "\t\t-> On " << Transactions[receptions[i]].date << ", " << emissor.first_name << ' ' << emissor.last_name << " transferred " <<  Transactions[receptions[i]].amount << endl;
+		if (Companies.find(Transactions[receptions[i]].source) != Companies.end()) {
+			companyData emissor = Companies[Transactions[receptions[i]].source];
+			cout << "\t\t-> On " << Transactions[receptions[i]].date << ", " << emissor.name << " transferred " <<  Transactions[receptions[i]].amount << endl;
+		} else { 
+			clientData emissor = Clients[Transactions[receptions[i]].source];
+			cout << "\t\t-> On " << Transactions[receptions[i]].date << ", " << emissor.first_name << ' ' << emissor.last_name << " transferred " <<  Transactions[receptions[i]].amount << endl;
+		}
 	}
 }
 
@@ -250,8 +255,13 @@ void printTransmisions(const vector<string> &transmisions) {
 	clientData client = Clients[Transactions[transmisions[0]].source];
 	cout << '\t' << client.first_name << ' ' << client.last_name << " transmitted " << sumAmounts(transmisions)<< " from:" << endl;
 	for (int i = 0; i < transmisions.size(); ++i) {
-		clientData emissor = Clients[Transactions[transmisions[i]].target];
-		cout << "\t\t-> On " << Transactions[transmisions[i]].date << ", " << emissor.first_name << ' ' << emissor.last_name << " received " <<  Transactions[transmisions[i]].amount << endl;
+		if (Companies.find(Transactions[transmisions[i]].target) != Companies.end()) {
+			companyData emissor = Companies[Transactions[transmisions[i]].target];
+			cout << "\t\t-> On " << Transactions[transmisions[i]].date << ", " << emissor.name << ' ' << " received " <<  Transactions[transmisions[i]].amount << endl;
+		} else {
+			clientData emissor = Clients[Transactions[transmisions[i]].target];
+			cout << "\t\t-> On " << Transactions[transmisions[i]].date << ", " << emissor.first_name << ' ' << emissor.last_name << " received " <<  Transactions[transmisions[i]].amount << endl;
+		}
 	}
 }
 
@@ -292,7 +302,7 @@ int main() {
 	}
 
 	cout << "Searching for suspicious behaviour related to reveiver's degree..." << endl;
-
+	cout << "------------------------------------------------------------------" << endl;
 	for (map<string,clientData>::iterator it = Clients.begin(); it!=Clients.end(); ++it) {
 		clientData client = it->second;
 		map<string, vector<string> > dateMap;
@@ -314,9 +324,9 @@ int main() {
 		}
 		dateMap.clear();
 	}
-
+	cout << "------------------------------------------------------------------" << endl;
 	cout << "Searching for suspicious behaviour related to transmitter's degree..." << endl;
-
+	cout << "------------------------------------------------------------------" << endl;
 	for (map<string,clientData>::iterator it = Clients.begin(); it!=Clients.end(); ++it) {
 		clientData client = it->second;
 		map<string, vector<string> > dateMap;
@@ -341,7 +351,9 @@ int main() {
 
 	int countDag = 0;
  	//Search for DAG between clients and enterprises
+ 	cout << "------------------------------------------------------------------" << endl;
 	cout << "Searching for suspicious DAGs relationships... (This may take a while)"<< endl;
+	cout << "------------------------------------------------------------------" << endl;
 	queue<pair<string,string> > q;
 	double currentAmount;
 	for (map<string,clientData>::iterator it = Clients.begin(); it!=Clients.end(); ++it) {
@@ -368,7 +380,6 @@ int main() {
 			}
 		}
 	}
-	cout << countDag << endl;
 	/*
 	for (map<string,companyData>::iterator it = Companies.begin(); it!=Companies.end(); ++it) {
 		if (visited.find(it->first) == visited.end()) {
