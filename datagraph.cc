@@ -61,7 +61,7 @@ int MAX_SUM_CLIENT_CUTOFF = 2e3;
 int MAX_ENTRY_DEGREE = 3;
 int MAX_CUTOFF_INDIVIDUAL = 1e2;
 double STD_MAX_CUTTOFF = 20.0;
-int MIN_FRAUDULENT_CUTOFF = 10;
+int MIN_FRAUDULENT_CUTOFF = 2;
 
 map<string, clientData> Clients;
 map<string, transactionData> Transactions;
@@ -300,9 +300,9 @@ void printTransmisions(const vector<string> &transmisions) {
 int main() {
 	ofstream returnFile("fraudulent_top.txt");
 	outputFile << "Parsing data..." << endl;
-	parseClientData("clients.csv");
-	parseAtmData("atms.csv");
-	parseCompanyData("companies.csv");
+	parseClientData("clients.small.csv");
+	parseAtmData("atms.small.csv");
+	parseCompanyData("companies.small.csv");
 	parseTransactionData("transactions.small.csv");
 	outputFile << "Generating graph..." << endl;
 	for (map<string,transactionData>::iterator it=Transactions.begin(); it!=Transactions.end(); ++it){
@@ -333,7 +333,6 @@ int main() {
 			Clients.erase(clientID);
 		} else ++it;
 	}
-
 	outputFile << "Searching for suspicious behaviour related to reveiver's degree..." << endl;
 	outputFile << "------------------------------------------------------------------" << endl;
 	for (map<string,clientData>::iterator it = Clients.begin(); it!=Clients.end(); ++it) {
@@ -420,10 +419,10 @@ int main() {
 			if (Companies.find(it->first) != Companies.end()) {
 				returnFile << Companies[it->first].name;
 			} else returnFile << Clients[it->first].first_name << ' ' << Clients[it->first].last_name; 
-			returnFile << "\t" << it->second.first << "\t" << it->second.second << endl;
+			returnFile << ',' << "\t" << it->second.first << ',' << "\t" << it->second.second << ',' << endl;
 		}
 	}
-	outputFile << "Done! Printed in \"frautulent_top.txt\"." << endl; 
+	outputFile << "Done! Printed in \"fraudulent_top.txt\"." << endl; 
 
 	
 	// LOGS
