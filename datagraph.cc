@@ -140,47 +140,77 @@ void parseTransactionData(string csv) {
 }
 
 bool checkDecrease(string bigDate, string smallDate) {
-	if (bigDate.substr(6,4) > smallDate.substr(6,4)) return true;
-	else if (bigDate.substr(6,4) < smallDate.substr(6,4)) return false;
+	if (bigDate.substr(6,4) != smallDate.substr(6,4)) return false;
 	else if (bigDate.substr(0,2) > smallDate.substr(0,2)) return true;
 	else if (bigDate.substr(0,2) < smallDate.substr(0,2)) return false;
 	return bigDate.substr(3,2) >= smallDate.substr(3,2);
 }
 
 bool checkIncrease(string smallDate, string bigDate) {
-	if (bigDate.substr(6,4) > smallDate.substr(6,4)) return true;
-	else if (bigDate.substr(6,4) < smallDate.substr(6,4)) return false;
+	if (bigDate.substr(6,4) != smallDate.substr(6,4)) return false;
 	else if (bigDate.substr(0,2) > smallDate.substr(0,2)) return true;
 	else if (bigDate.substr(0,2) < smallDate.substr(0,2)) return false;
 	return bigDate.substr(3,2) >= smallDate.substr(3,2);
 }
 
-int checkCicle(string idStart,string idGoal) {
+map<string,string> visit;
+
+void printDAG(const string &idGoal,const string &idTransaction, const int &num) {
+	transactionData transaction = Transactions[idTransaction];
+	cout << "A circular pattern of length " << num+1 << " has been found! (Average amount: " << transaction.amount <<")" << endl;
+	string idActual = transaction.target;
+	string idTrans;
+	cout << "From " << transaction.date << ", ";
+	if (Companies.find(idGoal) != Companies.end()) {
+			cout << Companies[idGoal].name;
+	} else {
+		cout << Clients[idGoal].first_name << ' ' << Clients[idActual].last_name;
+	}
+	while(idGoal != idActual) {
+		cout << " -> ";
+		if (Companies.find(idActual) != Companies.end()) {
+			cout << Companies[idActual].name;
+		} else {
+			cout << Clients[idActual].first_name << ' ' << Clients[idActual].last_name;
+		}
+		idTrans = visit[idActual];
+		idActual = Transactions[idTrans].target;
+	}
+	cout <<". Until " << Transactions[idTrans].date << endl;
+}
+
+int checkCicle(string idStart, string idGoal, string idTransaction) {
 	int num = 0;
-	map<string,bool> visit;
-	queue<pair<string,string> > q;
-	q.push(pair<string,string>(idStart,""));
-	visit.insert(pair<string,bool>(idStart,true));
+	double initAmount = stoi(Transactions[idTransaction].amount);
+	queue<pair<string,string>> q;
+ 	visit.clear();
+	q.push(pair<string,string>(idStart,idTransaction));
+	visit.insert(pair<string,string>(idStart,idTransaction));
 	while (not q.empty()) {
+		++num;
 		string id = q.front().first;
-		string idTransaction = q.front().second; q.pop();
+		string idTrans = q.front().second; q.pop();
 		vector<string> receptions;
 		if (Companies.find(id) != Companies.end()) {
-				receptions = Companies[id].receptions;
+			receptions = Companies[id].receptions;
 		} else {
-				receptions = Clients[id].receptions;
+			receptions = Clients[id].receptions;
 		}
+		string bigDate = Transactions[idTransaction].date;
 		for (int i = 0; i < receptions.size(); ++i) {
 			transactionData reception = Transactions[receptions[i]];
-			if (idTransaction == "" or checkDecrease(Transactions[idTransaction].date, reception.date)) {
-				if (visit.find(reception.source) == visit.end() and 
-					stod(reception.amount) > MAX_CUTOFF_INDIVIDUAL) {
+			double actualAmount = stod(reception.amount);
+			double err = abs(actualAmount-initAmount) - 0.05*initAmount;
+			if (err < 0 and checkDecrease(bigDate,reception.date) and actualAmount > MAX_CUTOFF_INDIVIDUAL) {
+				if (idGoal == reception.source) {
+					printDAG(idGoal,receptions[i], num);
+					return num;
+				} else if (visit.find(reception.source) == visit.end()){
 					q.push(pair<string,string>(reception.source,receptions[i]));
-					visit.insert(pair<string,bool>(reception.source,true));
-				} else if (reception.source == idGoal) return num;
+					visit.insert(pair<string,string>(reception.source,receptions[i]));
+				}
 			}
 		}
-		++num;
 	}
 	return 0;
 }
@@ -332,7 +362,7 @@ int main() {
 							 stod(transaction.amount) > MAX_CUTOFF_INDIVIDUAL){
 							q.push(pair<string,string> (transaction.target,transactions[i]));
 							visited.insert(pair<string,string>(transaction.target,id));
-						} else if (checkCicle(id,transaction.target)> 0) ++countDag;
+						} else if (checkCicle(id,transaction.target,transactions[i])> 0) ++countDag;
 					}
 				}
 			}
