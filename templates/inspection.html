@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="icon" href="https://v4-alpha.getbootstrap.com/favicon.ico">
+
+    <title>Results | Fraud Inspector</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="../static/bootstrap.css" rel="stylesheet">
+
+    <!-- Custom styles for this template -->
+    <link href="../static/grid.css" rel="stylesheet">
+  </head>
+
+  <body>
+    <div class="container">
+
+      <h1>Inspection Results</h1>
+      <p class="lead">These are the results after applying</p>
+
+      <div class="form-group">
+          <label for="exampleTextarea">Logs of the process (graph_logs.txt file):</label>
+
+          {% if send %}
+                  <textarea class="form-control" id="exampleTextarea" rows="3">{% for graphlogline in send[1] %} {{ graphlogline }} {% endfor %}</textarea>
+          {% endif %}
+      </div>
+
+      <h3>Possible fraudulent behavior</h3>
+      <p>The following transactions have been identified as potentially fraudulent and ranked accordingly. They can be found in the following table and in the log file fraudulent_top.txt:</p>
+
+      <div class="starter-template">
+	<table class="table">
+	  <thead class="thead-dark">
+	    <tr>
+	      <th scope="col">#</th>
+	      <th scope="col">Name</a></th>
+	      <th scope="col">Amount of money</a></th>
+	      <th scope="col">Rank</th>
+	    </tr>
+	  </thead>
+	  <tbody>
+            {% if send %}
+		    {% for ftl in send[0] %}
+		    <tr>
+		      <th scope="row">{{ loop.index }}</th>
+		      <td>{{ ftl.split(',')[0]  }}</td>
+		      <td>{{ ftl.split(',')[1] }}</td>
+		      <td>{{ ftl.split(',')[2] }}</td>
+		    </tr>
+		    {% endfor %}
+            {% endif %}
+	  </tbody>
+	</table>
+      </div>
+
+
+    </div> <!-- /container -->
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <script src="../static/ie10-viewport-bug-workaround.js"></script>
+  
+
+</body></html>

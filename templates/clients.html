@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="icon" href="http://getbootstrap.com/favicon.ico">
+
+    <title>Clients | Fraud Inspector</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="../static/bootstrap.css" rel="stylesheet">
+
+    <!-- Custom styles for this template -->
+    <link href="../static/starter-template.css" rel="stylesheet">
+  </head>
+
+  <body>
+
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+      <a class="navbar-brand" href="#">Fraud Inspector</a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+        <ul class="navbar-nav mr-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="../fraudinspector/">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="../fraudinspector/seetransactions">Transactions</a>
+          </li>
+          <li class="nav-item active">
+            <a class="nav-link" href="#">Clients <span class="sr-only">(current)</span></a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="../fraudinspector/seecompanies">Companies</a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <main role="main" class="container">
+      <div class="starter-template">
+        {% if limited %}
+        <h5>Limited to 1000 first entries for time management, </h5><a href="seeclients/unlimited" class="nav-link"><h5>click here to go unlimited.</h5></a></br>
+        {% endif %}
+	<table class="table">
+	  <thead class="thead-dark">
+	    <tr>
+	      <th scope="col">#</th>
+	      <th scope="col">ID&nbsp;<a class="boto" href="?sort=id&dir=1">&#8593;</a>&nbsp;<a class="boto" href="?sort=id&dir=-1">&#8595;</a></th>
+	      <th scope="col">Name&nbsp;<a class="boto" href="?sort=last_name&dir=1">&#8593;</a>&nbsp;<a class="boto" href="?sort=last_name&dir=-1">&#8595;</a></th>
+	      <th scope="col">Nationality&nbsp;<a class="boto" href="?sort=nationality&dir=1">&#8593;</a>&nbsp;<a class="boto" href="?sort=nationality&dir=-1">&#8595;</a></th>
+	      <th scope="col">Country&nbsp;<a class="boto" href="?sort=country&dir=1">&#8593;</a>&nbsp;<a class="boto" href="?sort=country&dir=-1">&#8595;</a></th>
+	      <th scope="col">Email&nbsp;<a class="boto" href="?sort=email&dir=1">&#8593;</a>&nbsp;<a class="boto" href="?sort=email&dir=-1">&#8595;</a></th>
+	      <th scope="col">Age&nbsp;<a class="boto" href="?sort=age&dir=-1">&#8593;</a>&nbsp;<a class="boto" href="?sort=age&dir=1">&#8595;</a></th>
+	    </tr>
+	  </thead>
+	  <tbody>
+	    {% for client in clients %}
+	    <tr>
+	      <th scope="row">{{ loop.index }}</th>
+	      <td>{{ client["id"] }}</td>
+	      <td>{{ client["first_name"] + " " + client["last_name"] }}</td>
+	      <td>{{ client["nationality"] }}</td>
+	      <td>{{ client["country"] }}</td>
+	      <td>{{ client["email"] }}</td>
+	      <td>{{ client["age"] }}</td>
+	    </tr>
+            {% endfor %}
+	  </tbody>
+	</table>
+      </div>
+
+    </main><!-- /.container -->
+
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="companies_files/jquery-3.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script>window.jQuery || document.write('<script src="../../../../assets/js/vendor/jquery.min.js"><\/script>')</script>
+    <script src="companies_files/popper.js"></script>
+    <script src="companies_files/bootstrap.js"></script>
+  
+
+</body></html>
