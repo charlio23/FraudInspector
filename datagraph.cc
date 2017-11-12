@@ -156,6 +156,7 @@ bool checkIncrease(string smallDate, string bigDate) {
 }
 
 map<string,string> visit;
+ofstream outputFile("graph_logs.txt");
 
 void printDAG(const string &idGoal,const string &idTransaction, const int &num) {
 	pair<double,int> current;
@@ -164,30 +165,30 @@ void printDAG(const string &idGoal,const string &idTransaction, const int &num) 
 	current.first += stod(transaction.amount);
 	++current.second;
 	Punctuation[idGoal] = current;
-	cout << "A circular pattern of length " << num+1 << " has been found! (Average amount: " << transaction.amount <<")" << endl;
+	outputFile << "A circular pattern of length " << num+1 << " has been found! (Average amount: " << transaction.amount <<")" << endl;
 	string idActual = transaction.target;
 	string idTrans;
-	cout << "From " << transaction.date << ", ";
+	outputFile << "From " << transaction.date << ", ";
 	if (Companies.find(idGoal) != Companies.end()) {
-			cout << Companies[idGoal].name;
+			outputFile << Companies[idGoal].name;
 	} else {
-		cout << Clients[idGoal].first_name << ' ' << Clients[idActual].last_name;
+		outputFile << Clients[idGoal].first_name << ' ' << Clients[idActual].last_name;
 	}
 	while(idGoal != idActual) {
 		current = Punctuation[idActual];
 		current.first += stod(transaction.amount);
 		++current.second;
 		Punctuation[idActual] = current;
-		cout << " -> ";
+		outputFile << " -> ";
 		if (Companies.find(idActual) != Companies.end()) {
-			cout << Companies[idActual].name;
+			outputFile << Companies[idActual].name;
 		} else {
-			cout << Clients[idActual].first_name << ' ' << Clients[idActual].last_name;
+			outputFile << Clients[idActual].first_name << ' ' << Clients[idActual].last_name;
 		}
 		idTrans = visit[idActual];
 		idActual = Transactions[idTrans].target;
 	}
-	cout <<". Until " << Transactions[idTrans].date << endl;
+	outputFile <<". Until " << Transactions[idTrans].date << endl;
 }
 
 int checkCicle(string idStart, string idGoal, string idTransaction) {
@@ -255,7 +256,7 @@ void printReceptions(const vector<string> &receptions) {
 	current.first += sum;
 	++current.second;
 	Punctuation[Transactions[receptions[0]].target] = current;
-	cout << '\t' << client.first_name << ' ' << client.last_name << " received " << sum << " from:" << endl;
+	outputFile << '\t' << client.first_name << ' ' << client.last_name << " received " << sum << " from:" << endl;
 	for (int i = 0; i < receptions.size(); ++i) {
 		string id = Transactions[receptions[i]].source;
 		current = Punctuation[id];
@@ -264,10 +265,10 @@ void printReceptions(const vector<string> &receptions) {
 		Punctuation[id] = current;
 		if (Companies.find(id) != Companies.end()) {
 			companyData emissor = Companies[id];
-			cout << "\t\t-> On " << Transactions[receptions[i]].date << ", " << emissor.name << " transferred " <<  Transactions[receptions[i]].amount << endl;
+			outputFile << "\t\t-> On " << Transactions[receptions[i]].date << ", " << emissor.name << " transferred " <<  Transactions[receptions[i]].amount << endl;
 		} else { 
 			clientData emissor = Clients[id];
-			cout << "\t\t-> On " << Transactions[receptions[i]].date << ", " << emissor.first_name << ' ' << emissor.last_name << " transferred " <<  Transactions[receptions[i]].amount << endl;
+			outputFile << "\t\t-> On " << Transactions[receptions[i]].date << ", " << emissor.first_name << ' ' << emissor.last_name << " transferred " <<  Transactions[receptions[i]].amount << endl;
 		}
 	}
 }
@@ -279,7 +280,7 @@ void printTransmisions(const vector<string> &transmisions) {
 	current.first += sum;
 	++current.second;
 	Punctuation[Transactions[transmisions[0]].source] = current;
-	cout << '\t' << client.first_name << ' ' << client.last_name << " transmitted " << sum << " from:" << endl;
+	outputFile << '\t' << client.first_name << ' ' << client.last_name << " transmitted " << sum << " from:" << endl;
 	for (int i = 0; i < transmisions.size(); ++i) {
 		string id = Transactions[transmisions[i]].target;
 		current = Punctuation[id];
@@ -288,21 +289,23 @@ void printTransmisions(const vector<string> &transmisions) {
 		Punctuation[id] = current;
 		if (Companies.find(id) != Companies.end()) {
 			companyData emissor = Companies[id];
-			cout << "\t\t-> On " << Transactions[transmisions[i]].date << ", " << emissor.name << ' ' << " received " <<  Transactions[transmisions[i]].amount << endl;
+			outputFile << "\t\t-> On " << Transactions[transmisions[i]].date << ", " << emissor.name << ' ' << " received " <<  Transactions[transmisions[i]].amount << endl;
 		} else {
 			clientData emissor = Clients[id];
-			cout << "\t\t-> On " << Transactions[transmisions[i]].date << ", " << emissor.first_name << ' ' << emissor.last_name << " received " <<  Transactions[transmisions[i]].amount << endl;
+			outputFile << "\t\t-> On " << Transactions[transmisions[i]].date << ", " << emissor.first_name << ' ' << emissor.last_name << " received " <<  Transactions[transmisions[i]].amount << endl;
 		}
 	}
 }
 
 int main() {
-	cout << "Parsing data..." << endl;
-	parseClientData("clients.small.csv");
-	parseAtmData("atms.small.csv");
-	parseCompanyData("companies.small.csv");
+	ofstream returnFile("fraudulent_top.txt");
+	outputFile << "Parsing data..." << endl;
+	parseClientData("clients.csv");
+	cout << Clients.size() << endl;;
+	parseAtmData("atms.csv");
+	parseCompanyData("companies.csv");
 	parseTransactionData("transactions.small.csv");
-	cout << "Generating graph..." << endl;
+	outputFile << "Generating graph..." << endl;
 	for (map<string,transactionData>::iterator it=Transactions.begin(); it!=Transactions.end(); ++it){
 		string transactionID = it->first;
 		transactionData transaction = it->second;
@@ -322,7 +325,7 @@ int main() {
 		}
 	}
 	//Client map clean
-	cout << "Cleaning graph form client current transactions..." << endl;
+	outputFile << "Cleaning graph form client current transactions..." << endl;
 	for (map<string,clientData>::iterator it=Clients.begin(); it!=Clients.end();){
 		string clientID = it->first;
 		if (sumAmounts(it->second.transactions) < MAX_SUM_CLIENT_CUTOFF and 
@@ -332,8 +335,8 @@ int main() {
 		} else ++it;
 	}
 
-	cout << "Searching for suspicious behaviour related to reveiver's degree..." << endl;
-	cout << "------------------------------------------------------------------" << endl;
+	outputFile << "Searching for suspicious behaviour related to reveiver's degree..." << endl;
+	outputFile << "------------------------------------------------------------------" << endl;
 	for (map<string,clientData>::iterator it = Clients.begin(); it!=Clients.end(); ++it) {
 		clientData client = it->second;
 		map<string, vector<string> > dateMap;
@@ -355,9 +358,9 @@ int main() {
 		}
 		dateMap.clear();
 	}
-	cout << "------------------------------------------------------------------" << endl;
-	cout << "Searching for suspicious behaviour related to transmitter's degree..." << endl;
-	cout << "------------------------------------------------------------------" << endl;
+	outputFile << "------------------------------------------------------------------" << endl;
+	outputFile << "Searching for suspicious behaviour related to transmitter's degree..." << endl;
+	outputFile << "------------------------------------------------------------------" << endl;
 	for (map<string,clientData>::iterator it = Clients.begin(); it!=Clients.end(); ++it) {
 		clientData client = it->second;
 		map<string, vector<string> > dateMap;
@@ -382,9 +385,9 @@ int main() {
 
 	int countDag = 0;
  	//Search for DAG between clients and enterprises
- 	cout << "------------------------------------------------------------------" << endl;
-	cout << "Searching for suspicious DAGs relationships... (This may take a while)"<< endl;
-	cout << "------------------------------------------------------------------" << endl;
+ 	outputFile << "------------------------------------------------------------------" << endl;
+	outputFile << "Searching for suspicious DAGs relationships... (This may take a while)"<< endl;
+	outputFile << "------------------------------------------------------------------" << endl;
 	queue<pair<string,string> > q;
 	double currentAmount;
 	for (map<string,clientData>::iterator it = Clients.begin(); it!=Clients.end(); ++it) {
@@ -411,43 +414,20 @@ int main() {
 			}
 		}
 	}
-
-	cout << "Printing list of most fraudulent people" << endl;
+	cout << Clients.size() << endl;
+	cout << Atms.size() << endl;
+	cout << Companies.size() << endl;
+	returnFile << "Printing list of most fraudulent people" << endl;
 	for (map<string,pair<double,int> >::iterator it = Punctuation.begin(); it != Punctuation.end(); ++it) {
 		if (it->second.second >= MIN_FRAUDULENT_CUTOFF) {
 			if (Companies.find(it->first) != Companies.end()) {
-				cout << Companies[it->first].name;
-			} else cout << Clients[it->first].first_name << ' ' << Clients[it->first].last_name; 
-			cout << '\t' << it->second.first << '\t' << it->second.second << endl;
+				returnFile << Companies[it->first].name;
+			} else returnFile << Clients[it->first].first_name << ' ' << Clients[it->first].last_name; 
+			returnFile << '\t' << it->second.first << '\t' << it->second.second << endl;
 		}
 	}
-
-
-	/*
-	for (map<string,companyData>::iterator it = Companies.begin(); it!=Companies.end(); ++it) {
-		if (visited.find(it->first) == visited.end()) {
-			q.push(it->first);
-			visited.insert(pair<string,string>(it->first,""));
-			while (not q.empty()) {
-				string id = q.front(); q.pop();
-				vector<string> transactions;
-				if (Companies.find(id) != Companies.end()) transactions = Companies[id].transactions;
-				else transactions = Clients[id].transactions;
-				for (int i = 0; i < transactions.size(); ++i) {
-					transactionData transaction = Transactions[transactions[i]];
-					int num;
-					if (visited.find(transaction.target) == visited.end()) {
-						q.push(transaction.target);
-						visited.insert(pair<string,string>(transaction.target,id));
-					} else if (checkCicle(id,transaction.target)) {
-					}
-				}
-			}
-		}
-	}*/
-	
-	/* LOGS
-	for (map<string,clientData>::iterator it=Clients.begin(); it!=Clients.end(); ++it) {
+	// LOGS
+	/*for (map<string,clientData>::iterator it=Clients.begin(); it!=Clients.end(); ++it) {
 		clientData client = it->second;
 		cout << client.first_name << ' ' << client.last_name << endl;
 		int sizeT = client.transactions.size();
