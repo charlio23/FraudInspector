@@ -301,7 +301,6 @@ int main() {
 	ofstream returnFile("fraudulent_top.txt");
 	outputFile << "Parsing data..." << endl;
 	parseClientData("clients.csv");
-	cout << Clients.size() << endl;;
 	parseAtmData("atms.csv");
 	parseCompanyData("companies.csv");
 	parseTransactionData("transactions.small.csv");
@@ -313,14 +312,14 @@ int main() {
 			Atms[transaction.source].transactions.push_back(transactionID);
 		} else if (Companies.find(transaction.source) != Companies.end()) {
 			Companies[transaction.source].transactions.push_back(transactionID);
-		} else {
+		} else if (Clients.find(transaction.target) != Clients.end()){
 			Clients[transaction.source].transactions.push_back(transactionID);
 		}
 		if (Atms.find(transaction.target) != Atms.end()) {
 			Atms[transaction.target].receptions.push_back(transactionID);
 		} else if (Companies.find(transaction.target) != Companies.end()) {
 			Companies[transaction.target].receptions.push_back(transactionID);
-		} else {
+		} else if (Clients.find(transaction.target) != Clients.end()){
 			Clients[transaction.target].receptions.push_back(transactionID);
 		}
 	}
@@ -414,18 +413,19 @@ int main() {
 			}
 		}
 	}
-	cout << Clients.size() << endl;
-	cout << Atms.size() << endl;
-	cout << Companies.size() << endl;
-	returnFile << "Printing list of most fraudulent people" << endl;
+	outputFile << "------------------------------------------------------------------" << endl;
+	outputFile << "Printing list of most fraudulent companies/clients..."<< endl;
 	for (map<string,pair<double,int> >::iterator it = Punctuation.begin(); it != Punctuation.end(); ++it) {
 		if (it->second.second >= MIN_FRAUDULENT_CUTOFF) {
 			if (Companies.find(it->first) != Companies.end()) {
 				returnFile << Companies[it->first].name;
 			} else returnFile << Clients[it->first].first_name << ' ' << Clients[it->first].last_name; 
-			returnFile << '\t' << it->second.first << '\t' << it->second.second << endl;
+			returnFile << "\t" << it->second.first << "\t" << it->second.second << endl;
 		}
 	}
+	outputFile << "Done! Printed in \"frautulent_top.txt\"." << endl; 
+
+	
 	// LOGS
 	/*for (map<string,clientData>::iterator it=Clients.begin(); it!=Clients.end(); ++it) {
 		clientData client = it->second;
