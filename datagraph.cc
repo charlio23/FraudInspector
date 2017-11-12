@@ -61,11 +61,13 @@ int MAX_SUM_CLIENT_CUTOFF = 2e3;
 int MAX_ENTRY_DEGREE = 3;
 int MAX_CUTOFF_INDIVIDUAL = 1e2;
 double STD_MAX_CUTTOFF = 20.0;
+int MIN_FRAUDULENT_CUTOFF = 10;
 
 map<string, clientData> Clients;
 map<string, transactionData> Transactions;
 map<string, companyData> Companies;
 map<string, atmData> Atms;
+map<string, pair<double,int> > Punctuation;
 map<string,string> visited;
 
 void parseClientData(string csv) {
@@ -156,7 +158,12 @@ bool checkIncrease(string smallDate, string bigDate) {
 map<string,string> visit;
 
 void printDAG(const string &idGoal,const string &idTransaction, const int &num) {
+	pair<double,int> current;
 	transactionData transaction = Transactions[idTransaction];
+	current = Punctuation[idGoal];
+	current.first += stod(transaction.amount);
+	++current.second;
+	Punctuation[idGoal] = current;
 	cout << "A circular pattern of length " << num+1 << " has been found! (Average amount: " << transaction.amount <<")" << endl;
 	string idActual = transaction.target;
 	string idTrans;
@@ -167,6 +174,10 @@ void printDAG(const string &idGoal,const string &idTransaction, const int &num) 
 		cout << Clients[idGoal].first_name << ' ' << Clients[idActual].last_name;
 	}
 	while(idGoal != idActual) {
+		current = Punctuation[idActual];
+		current.first += stod(transaction.amount);
+		++current.second;
+		Punctuation[idActual] = current;
 		cout << " -> ";
 		if (Companies.find(idActual) != Companies.end()) {
 			cout << Companies[idActual].name;
@@ -239,13 +250,23 @@ double stdeviationAmounts(const vector<string> &transactions) {
 
 void printReceptions(const vector<string> &receptions) {
 	clientData client = Clients[Transactions[receptions[0]].target];
-	cout << '\t' << client.first_name << ' ' << client.last_name << " received " << sumAmounts(receptions)<< " from:" << endl;
+	pair<double,int> current = Punctuation[Transactions[receptions[0]].target];
+	double sum = sumAmounts(receptions);
+	current.first += sum;
+	++current.second;
+	Punctuation[Transactions[receptions[0]].target] = current;
+	cout << '\t' << client.first_name << ' ' << client.last_name << " received " << sum << " from:" << endl;
 	for (int i = 0; i < receptions.size(); ++i) {
-		if (Companies.find(Transactions[receptions[i]].source) != Companies.end()) {
-			companyData emissor = Companies[Transactions[receptions[i]].source];
+		string id = Transactions[receptions[i]].source;
+		current = Punctuation[id];
+		current.first += stod(Transactions[receptions[i]].amount);
+		++current.second;
+		Punctuation[id] = current;
+		if (Companies.find(id) != Companies.end()) {
+			companyData emissor = Companies[id];
 			cout << "\t\t-> On " << Transactions[receptions[i]].date << ", " << emissor.name << " transferred " <<  Transactions[receptions[i]].amount << endl;
 		} else { 
-			clientData emissor = Clients[Transactions[receptions[i]].source];
+			clientData emissor = Clients[id];
 			cout << "\t\t-> On " << Transactions[receptions[i]].date << ", " << emissor.first_name << ' ' << emissor.last_name << " transferred " <<  Transactions[receptions[i]].amount << endl;
 		}
 	}
@@ -253,13 +274,23 @@ void printReceptions(const vector<string> &receptions) {
 
 void printTransmisions(const vector<string> &transmisions) {
 	clientData client = Clients[Transactions[transmisions[0]].source];
-	cout << '\t' << client.first_name << ' ' << client.last_name << " transmitted " << sumAmounts(transmisions)<< " from:" << endl;
+	pair<double,int> current = Punctuation[Transactions[transmisions[0]].source];
+	double sum = sumAmounts(transmisions);
+	current.first += sum;
+	++current.second;
+	Punctuation[Transactions[transmisions[0]].source] = current;
+	cout << '\t' << client.first_name << ' ' << client.last_name << " transmitted " << sum << " from:" << endl;
 	for (int i = 0; i < transmisions.size(); ++i) {
-		if (Companies.find(Transactions[transmisions[i]].target) != Companies.end()) {
-			companyData emissor = Companies[Transactions[transmisions[i]].target];
+		string id = Transactions[transmisions[i]].target;
+		current = Punctuation[id];
+		current.first += stod(Transactions[transmisions[i]].amount);
+		++current.second;
+		Punctuation[id] = current;
+		if (Companies.find(id) != Companies.end()) {
+			companyData emissor = Companies[id];
 			cout << "\t\t-> On " << Transactions[transmisions[i]].date << ", " << emissor.name << ' ' << " received " <<  Transactions[transmisions[i]].amount << endl;
 		} else {
-			clientData emissor = Clients[Transactions[transmisions[i]].target];
+			clientData emissor = Clients[id];
 			cout << "\t\t-> On " << Transactions[transmisions[i]].date << ", " << emissor.first_name << ' ' << emissor.last_name << " received " <<  Transactions[transmisions[i]].amount << endl;
 		}
 	}
@@ -380,6 +411,18 @@ int main() {
 			}
 		}
 	}
+
+	cout << "Printing list of most fraudulent people" << endl;
+	for (map<string,pair<double,int> >::iterator it = Punctuation.begin(); it != Punctuation.end(); ++it) {
+		if (it->second.second >= MIN_FRAUDULENT_CUTOFF) {
+			if (Companies.find(it->first) != Companies.end()) {
+				cout << Companies[it->first].name;
+			} else cout << Clients[it->first].first_name << ' ' << Clients[it->first].last_name; 
+			cout << '\t' << it->second.first << '\t' << it->second.second << endl;
+		}
+	}
+
+
 	/*
 	for (map<string,companyData>::iterator it = Companies.begin(); it!=Companies.end(); ++it) {
 		if (visited.find(it->first) == visited.end()) {
