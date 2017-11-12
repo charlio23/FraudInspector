@@ -6,6 +6,7 @@
 #include <vector>
 #include <map>
 #include <queue>
+#include <algorithm>
 using namespace std;
 
 //Define your structs here
@@ -56,6 +57,10 @@ struct companyData {
 
 int MAX_COLUMNS_CLIENT = 14;
 int MAX_COLUMNS_TRANSACTION = 7;
+int MAX_SUM_CLIENT_CUTOFF = 2e3;
+int MAX_ENTRY_DEGREE = 3;
+int MAX_CUTOFF_INDIVIDUAL = 1e2;
+double STD_MAX_CUTTOFF = 20.0;
 
 map<string, clientData> Clients;
 map<string, transactionData> Transactions;
@@ -134,14 +139,31 @@ void parseTransactionData(string csv) {
 	}
 }
 
+bool checkDecrease(string bigDate, string smallDate) {
+	if (bigDate.substr(6,4) > smallDate.substr(6,4)) return true;
+	else if (bigDate.substr(6,4) < smallDate.substr(6,4)) return false;
+	else if (bigDate.substr(0,2) > smallDate.substr(0,2)) return true;
+	else if (bigDate.substr(0,2) < smallDate.substr(0,2)) return false;
+	return bigDate.substr(3,2) >= smallDate.substr(3,2);
+}
+
+bool checkIncrease(string smallDate, string bigDate) {
+	if (bigDate.substr(6,4) > smallDate.substr(6,4)) return true;
+	else if (bigDate.substr(6,4) < smallDate.substr(6,4)) return false;
+	else if (bigDate.substr(0,2) > smallDate.substr(0,2)) return true;
+	else if (bigDate.substr(0,2) < smallDate.substr(0,2)) return false;
+	return bigDate.substr(3,2) >= smallDate.substr(3,2);
+}
+
 int checkCicle(string idStart,string idGoal) {
 	int num = 0;
 	map<string,bool> visit;
-	queue<string> q;
-	q.push(idStart);
+	queue<pair<string,string> > q;
+	q.push(pair<string,string>(idStart,""));
 	visit.insert(pair<string,bool>(idStart,true));
 	while (not q.empty()) {
-		string id = q.front(); q.pop();
+		string id = q.front().first;
+		string idTransaction = q.front().second; q.pop();
 		vector<string> receptions;
 		if (Companies.find(id) != Companies.end()) {
 				receptions = Companies[id].receptions;
@@ -150,21 +172,66 @@ int checkCicle(string idStart,string idGoal) {
 		}
 		for (int i = 0; i < receptions.size(); ++i) {
 			transactionData reception = Transactions[receptions[i]];
-			if (visit.find(reception.source) == visit.end()) {
-				q.push(reception.source);
-				visit.insert(pair<string,bool>(reception.source,true));
-			} else if (reception.source == idGoal) return num;
+			if (idTransaction == "" or checkDecrease(Transactions[idTransaction].date, reception.date)) {
+				if (visit.find(reception.source) == visit.end() and 
+					stod(reception.amount) > MAX_CUTOFF_INDIVIDUAL) {
+					q.push(pair<string,string>(reception.source,receptions[i]));
+					visit.insert(pair<string,bool>(reception.source,true));
+				} else if (reception.source == idGoal) return num;
+			}
 		}
 		++num;
 	}
 	return 0;
 }
 
+double sumAmounts(const vector<string> &transactions) {
+	double sum = 0;
+	for (int i = 0; i < transactions.size(); ++i) {
+		sum += stod(Transactions[transactions[i]].amount);
+	}
+	return sum;
+}
+
+double meanAmounts(const vector<string> &transactions) {
+	return sumAmounts(transactions)/float(transactions.size());
+}
+
+double stdeviationAmounts(const vector<string> &transactions) {
+	double mean = meanAmounts(transactions);
+	double sum = 0;
+	for (int i = 0; i < transactions.size(); ++i) {
+		double x = stod(Transactions[transactions[i]].amount);;
+		sum += (x - mean)*(x - mean);
+	}
+	return sqrt(sum/double(transactions.size()));
+}
+
+void printReceptions(const vector<string> &receptions) {
+	clientData client = Clients[Transactions[receptions[0]].target];
+	cout << '\t' << client.first_name << ' ' << client.last_name << " received " << sumAmounts(receptions)<< " from:" << endl;
+	for (int i = 0; i < receptions.size(); ++i) {
+		clientData emissor = Clients[Transactions[receptions[i]].source];
+		cout << "\t\t-> On " << Transactions[receptions[i]].date << ", " << emissor.first_name << ' ' << emissor.last_name << " transferred " <<  Transactions[receptions[i]].amount << endl;
+	}
+}
+
+void printTransmisions(const vector<string> &transmisions) {
+	clientData client = Clients[Transactions[transmisions[0]].source];
+	cout << '\t' << client.first_name << ' ' << client.last_name << " transmitted " << sumAmounts(transmisions)<< " from:" << endl;
+	for (int i = 0; i < transmisions.size(); ++i) {
+		clientData emissor = Clients[Transactions[transmisions[i]].target];
+		cout << "\t\t-> On " << Transactions[transmisions[i]].date << ", " << emissor.first_name << ' ' << emissor.last_name << " received " <<  Transactions[transmisions[i]].amount << endl;
+	}
+}
+
 int main() {
+	cout << "Parsing data..." << endl;
 	parseClientData("clients.small.csv");
 	parseAtmData("atms.small.csv");
 	parseCompanyData("companies.small.csv");
 	parseTransactionData("transactions.small.csv");
+	cout << "Generating graph..." << endl;
 	for (map<string,transactionData>::iterator it=Transactions.begin(); it!=Transactions.end(); ++it){
 		string transactionID = it->first;
 		transactionData transaction = it->second;
@@ -183,44 +250,98 @@ int main() {
 			Clients[transaction.target].receptions.push_back(transactionID);
 		}
 	}
+	//Client map clean
+	cout << "Cleaning graph form client current transactions..." << endl;
+	for (map<string,clientData>::iterator it=Clients.begin(); it!=Clients.end();){
+		string clientID = it->first;
+		if (sumAmounts(it->second.transactions) < MAX_SUM_CLIENT_CUTOFF and 
+			sumAmounts(it->second.receptions) < MAX_SUM_CLIENT_CUTOFF) {
+			++it;
+			Clients.erase(clientID);
+		} else ++it;
+	}
 
- 	//Search for DAG between clients and enterprises
-	queue<string> q;
-	int i = 0;
+	cout << "Searching for suspicious behaviour related to reveiver's degree..." << endl;
+
+	for (map<string,clientData>::iterator it = Clients.begin(); it!=Clients.end(); ++it) {
+		clientData client = it->second;
+		map<string, vector<string> > dateMap;
+		for (int i = 0; i < client.receptions.size(); ++i) {
+			transactionData transaction = Transactions[client.receptions[i]];
+			if (dateMap.find(transaction.date) != dateMap.end()) {
+				dateMap[transaction.date].push_back(client.receptions[i]);
+			} else {
+				vector<string> aux(1);
+				aux[0] = client.receptions[i];
+				dateMap.insert(pair<string, vector<string> >(transaction.date,aux));
+			}
+		}
+		for (map<string,vector<string> >::iterator it = dateMap.begin(); it != dateMap.end(); ++it) {
+			if (it->second.size() >= MAX_ENTRY_DEGREE) {
+				if (stdeviationAmounts(it->second) < STD_MAX_CUTTOFF and
+					sumAmounts(it->second) > MAX_SUM_CLIENT_CUTOFF) printReceptions(it->second);
+			}
+		}
+		dateMap.clear();
+	}
+
+	cout << "Searching for suspicious behaviour related to transmitter's degree..." << endl;
+
+	for (map<string,clientData>::iterator it = Clients.begin(); it!=Clients.end(); ++it) {
+		clientData client = it->second;
+		map<string, vector<string> > dateMap;
+		for (int i = 0; i < client.transactions.size(); ++i) {
+			transactionData transaction = Transactions[client.transactions[i]];
+			if (dateMap.find(transaction.date) != dateMap.end()) {
+				dateMap[transaction.date].push_back(client.transactions[i]);
+			} else {
+				vector<string> aux(1);
+				aux[0] = client.transactions[i];
+				dateMap.insert(pair<string, vector<string> >(transaction.date,aux));
+			}
+		}
+		for (map<string,vector<string> >::iterator it = dateMap.begin(); it != dateMap.end(); ++it) {
+			if (it->second.size() >= MAX_ENTRY_DEGREE) {
+				if (stdeviationAmounts(it->second) < STD_MAX_CUTTOFF and
+					sumAmounts(it->second) > MAX_SUM_CLIENT_CUTOFF) printTransmisions(it->second);
+			}
+		}
+		dateMap.clear();
+	}
+
 	int countDag = 0;
-	int visto = 0;
+ 	//Search for DAG between clients and enterprises
+	cout << "Searching for suspicious DAGs relationships... (This may take a while)"<< endl;
+	queue<pair<string,string> > q;
+	double currentAmount;
 	for (map<string,clientData>::iterator it = Clients.begin(); it!=Clients.end(); ++it) {
 		if (visited.find(it->first) == visited.end()) {
-			++i;
-			q.push(it->first);
 			visited.insert(pair<string,string>(it->first,""));
+			q.push(pair<string,string> (it->first,""));
 			while (not q.empty()) {
-				string id = q.front(); q.pop();
+				string id = q.front().first; 
+				string idTransaction = q.front().second; q.pop();
 				vector<string> transactions;
 				if (Companies.find(id) != Companies.end()) {
 					transactions = Companies[id].transactions;
-				}
-				else transactions = Clients[id].transactions;
+				} else transactions = Clients[id].transactions;
 				for (int i = 0; i < transactions.size(); ++i) {
 					transactionData transaction = Transactions[transactions[i]];
-					if (visited.find(transaction.target) == visited.end()) {
-						q.push(transaction.target);
-						visited.insert(pair<string,string>(transaction.target,id));
-					} else { 
-						++visto;
-						if (checkCicle(id,transaction.target)> 0) {
-						cout << "rooooop" << endl;
-							++countDag;
-						}
+					if (idTransaction == "" or checkIncrease(Transactions[idTransaction].date, transaction.date)) {
+						if (visited.find(transaction.target) == visited.end() and
+							 stod(transaction.amount) > MAX_CUTOFF_INDIVIDUAL){
+							q.push(pair<string,string> (transaction.target,transactions[i]));
+							visited.insert(pair<string,string>(transaction.target,id));
+						} else if (checkCicle(id,transaction.target)> 0) ++countDag;
 					}
 				}
 			}
 		}
 	}
-	cout << visto << endl;
+	cout << countDag << endl;
+	/*
 	for (map<string,companyData>::iterator it = Companies.begin(); it!=Companies.end(); ++it) {
 		if (visited.find(it->first) == visited.end()) {
-			++i;
 			q.push(it->first);
 			visited.insert(pair<string,string>(it->first,""));
 			while (not q.empty()) {
@@ -235,14 +356,13 @@ int main() {
 						q.push(transaction.target);
 						visited.insert(pair<string,string>(transaction.target,id));
 					} else if (checkCicle(id,transaction.target)) {
-						++countDag;
 					}
 				}
 			}
 		}
-	}
-	cout << i << ' ' << countDag << endl;
-	/*///* LOGS
+	}*/
+	
+	/* LOGS
 	for (map<string,clientData>::iterator it=Clients.begin(); it!=Clients.end(); ++it) {
 		clientData client = it->second;
 		cout << client.first_name << ' ' << client.last_name << endl;
