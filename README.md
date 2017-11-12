@@ -1,1 +1,2 @@
 # FraudInspector
+Fraud Inspector is a tool that dives for you into big economic transactions datasets containing money movements between particulars and businesses, identifying movements that could potentially be part of some economic fraud. This is done through grah analysis algorithms in C++. A web interface built with Flask (Python) allows a simple visualization of the transaction dataset that is being used, provided by Credit Suisse with MongoDB and interaction with the C++ program that analizes possible frauds, outputting the result on the browser.
